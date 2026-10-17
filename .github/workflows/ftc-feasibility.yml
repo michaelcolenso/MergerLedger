@@ -1,0 +1,46 @@
+name: FTC feasibility spike
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ftc-feasibility.yml'
+      - 'scripts/acquire_ftc.py'
+      - 'scripts/profile_ftc.py'
+
+permissions:
+  contents: write
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Acquire official FTC sources
+        run: python scripts/acquire_ftc.py
+      - name: Profile current snapshot
+        shell: bash
+        run: |
+          SNAPSHOT=$(find data/raw -mindepth 1 -maxdepth 1 -type d | sort | tail -1)
+          python scripts/profile_ftc.py "$SNAPSHOT"
+          mkdir -p reports
+          cp "$SNAPSHOT/profile.json" reports/ftc-profile.json
+          cp "$SNAPSHOT/dictionary.csv" reports/ftc-data-dictionary.csv
+          cp "$SNAPSHOT/manifest.json" reports/ftc-source-manifest.json
+          python - <<'PY'
+          import csv, json, pathlib
+          p=pathlib.Path('reports/ftc-data-dictionary.csv')
+          rows=list(csv.DictReader(p.open(encoding='utf-8-sig')))
+          pathlib.Path('reports/ftc-data-dictionary.json').write_text(json.dumps(rows,indent=2)+'\n')
+          PY
+      - name: Commit reproducible profile outputs
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add reports/
+          git diff --cached --quiet && exit 0
+          git commit -m 'data: profile FTC merger enforcement dataset'
+          git push
