@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Profile an acquired FTC snapshot without assuming a schema."""
+"""Profile an acquired FTC snapshot without assuming a schema.
+
+M0 artifact: the resulting profile is the source of truth for downstream schema design.
+"""
 
 from __future__ import annotations
 
